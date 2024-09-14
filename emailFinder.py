@@ -4,6 +4,7 @@ import argparse
 import re
 from urllib.parse import urljoin
 import sys
+import os
 
 emailReg = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
 tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'li', 'span', 'a', 'strong', 'em', 'b', 'i', 'mark', 
@@ -13,6 +14,11 @@ tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'li', 'span'
         'aside', 'header', 'footer', 'main', 'figure', 'figcaption', 'details', 'summary', 'dialog']
 allEmails = []
 line = "=================================================="
+header = """
+                    _                  
+  _  ._ _   _. o | |_ o ._   _|  _  ._ 
+ (/_ | | | (_| | | |  | | | (_| (/_ |  
+        """
 
 def getHrefRoutes(url):
     try:
@@ -30,15 +36,15 @@ def getHrefRoutes(url):
 
     except requests.exceptions.RequestException as e:
         print(f"The given URL ({url}) is not reachable, see errors ===> \033[91m{e}\033[0m")
-        sys.exit(1)
+        return []
         
 
-def find_emails(url):
+def findEmails(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
     except requests.exceptions.RequestException as x:
-        #print(f"URL \033[91m{url}\033[0m is not valid: {x}")
+        print(f"URL \033[91m{url}\033[0m is not valid: {x}")
         return
     
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -62,28 +68,47 @@ def find_emails(url):
     #else:
         #print(f"\033[91mNo emails found in {url}.\033[0m")
 
-if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser(description="Find email addresses from a given website.")
-    parser.add_argument('url', help="The main URL of the website. e.g.: python emailFinder https://example.com ")
-    args = parser.parse_args()
-
-    base_url = args.url
-    routes = getHrefRoutes(base_url)
+def process_url(url):
+    routes = getHrefRoutes(url)
 
     if routes:
-        print("""
-                    _                  
-  _  ._ _   _. o | |_ o ._   _|  _  ._ 
- (/_ | | | (_| | | |  | | | (_| (/_ |  
-        """)
-        print(f"{line}\n - Found {len(routes)} routes. Scanning each for emails ...\n{line}")
-        
+        print(f"{line}\n - Found {len(routes)} routes.\n - Scanning each for emails on \033[0;33m{url}\033[0m ...\n{line}")
         for route in routes:
-            full_url = urljoin(base_url, route)
-            find_emails(full_url)
+            full_url = urljoin(url, route)
+            findEmails(full_url)
     else:
-        print("No routes found on the provided URL.")
+        print(f"No routes found on the provided URL: {url}.")
+
+def process_urls_from_file(file_path):
+    if not os.path.isfile(file_path):
+        print(f"\033[91mThe file '\033[0;33m{file_path}\033[0m' does not exist.\033[0m")
+        sys.exit(1)
+
+    with open(file_path, 'r') as f:
+        urls = f.read().splitlines()
+
+    for url in urls:
+        if url.strip():
+            print(f"{line}\n - Scanning \033[0;33m{url}\033[0m ...")
+            process_url(url)
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description="Find email addresses from a given website or a file with multiple URLs.")
+    parser.add_argument('input', help="The website URL or the file path containing a list of URLs.")
+    args = parser.parse_args()
+
+    input_value = args.input
+
+    # Check if input is a file or a URL
+    if os.path.isfile(input_value):
+        print(f"{header}")
+        print(f"{line}\n - Provided target file with URLs ==> \033[0;33m{input_value}\033[0m")
+        process_urls_from_file(input_value)
+    else:
+        print(f"{header}")
+        print(f"{line}\n - Provided URL ==> \033[0;33m{input_value}\033[0m")
+        process_url(input_value)
 
     print(f"{line}\n - All collected emails:\n{line}")
     for email in set(allEmails):  #set() to remove duplicates from the final list
