@@ -21,6 +21,10 @@ pip install -r requirements
 ```
 python3 emailFinder.py urls.txt 
 ```
+## Improvement
+
+- [ ] Filter final list to remove wrong input
+- [ ] Speed, add multithreading when a file as an input 
 
 ## Demo
 
@@ -28,5 +32,4 @@ python3 emailFinder.py urls.txt
 ![image](https://github.com/user-attachments/assets/59051610-5b8b-4e8a-96d1-700fd6f5c305)
 ![image](https://github.com/user-attachments/assets/af018100-4566-42a6-a0fe-165c4ad15e39)
 ![image](https://github.com/user-attachments/assets/4c56f29d-72d5-450a-8c98-8c3cebb03a8e)
-
 
