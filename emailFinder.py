@@ -28,23 +28,22 @@ def getHrefRoutes(url):
         soup = BeautifulSoup(response.text, 'html.parser')
 
         routes = []
-        for a_tag in soup.find_all('a', href=True):
+        for a_tag in soup.find_all('a', href=True): #get all route from website based on href
             href = a_tag['href']
             routes.append(href)
 
         return routes
 
     except requests.exceptions.RequestException as e:
-        print(f"The given URL ({url}) is not reachable, see errors ===> \033[91m{e}\033[0m")
-        return []
-        
+        #print(f"The given URL ({url}) is not reachable, see errors ===> \033[91m{e}\033[0m")
+        return [] #return [] to ensure the function always return a list 
 
 def findEmails(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
     except requests.exceptions.RequestException as x:
-        print(f"URL \033[91m{url}\033[0m is not valid: {x}")
+        #print(f"URL \033[91m{url}\033[0m is not valid: {x}")
         return
     
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -61,9 +60,9 @@ def findEmails(url):
     emails = re.findall(emailReg, dataFormated)
     
     if emails:
-        print(f"Found emails in {url}:")
+        print(f"Found emails in \033[0;33m{url}\033[0m:")
         for email in set(emails):  
-            print(f"\033[92m" + email + "\033[0m")
+            print(f"[\033[92mx\033[0m]" + email)
             allEmails.append(email)  
     #else:
         #print(f"\033[91mNo emails found in {url}.\033[0m")
