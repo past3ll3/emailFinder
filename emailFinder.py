@@ -7,6 +7,8 @@ import sys
 import os
 
 emailReg = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+secondReg = r'^(?!.*\.(png|jpg|jpeg|gif|php|js|css|html|mp4)$)(?=.{2,25}@)(?!.*@.*@)(?!.*\..*\..*\.)(?!.*@.{1,1}\.)(?!.*@.{26,}@).+@[^.]+?\.[^.]+$'
+
 tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'li', 'span', 'a', 'strong', 'em', 'b', 'i', 'mark', 
         'small', 'sub', 'sup', 'code', 'samp', 'kbd', 'var', 'cite', 'del', 'ins', 'q', 'abbr', 'bdi', 'bdo', 'ruby', 'rt', 
         'rp', 'blockquote', 'pre', 'address', 'hr', 'form', 'label', 'input', 'textarea', 'button', 'select', 'option', 
@@ -60,10 +62,12 @@ def findEmails(url):
     emails = re.findall(emailReg, dataFormated)
     
     if emails:
-        print(f"Found emails in \033[0;33m{url}\033[0m:")
         for email in set(emails):  
-            print(f"[\033[92mx\033[0m]" + email)
-            allEmails.append(email)  
+            #print(f"[\033[92mx\033[0m]" + email)
+            if re.match(secondReg, email):
+                allEmails.append(email)
+                print(f"Found emails in \033[0;33m{url}\033[0m:")
+                print(f"[\033[92mx\033[0m]" + email)  
     #else:
         #print(f"\033[91mNo emails found in {url}.\033[0m")
 
@@ -98,17 +102,20 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     input_value = args.input
+    try : #wrapping mainlogic to catch keyboardinterrupt
+        #check if input is a file or a URL
+        if os.path.isfile(input_value):
+            print(f"{header}")
+            print(f"{line}\n - Provided target file with URLs ==> \033[0;33m{input_value}\033[0m")
+            process_urls_from_file(input_value)
+        else:
+            print(f"{header}")
+            print(f"{line}\n - Provided URL ==> \033[0;33m{input_value}\033[0m")
+            process_url(input_value)
 
-    # Check if input is a file or a URL
-    if os.path.isfile(input_value):
-        print(f"{header}")
-        print(f"{line}\n - Provided target file with URLs ==> \033[0;33m{input_value}\033[0m")
-        process_urls_from_file(input_value)
-    else:
-        print(f"{header}")
-        print(f"{line}\n - Provided URL ==> \033[0;33m{input_value}\033[0m")
-        process_url(input_value)
-
-    print(f"{line}\n - All collected emails:\n{line}")
-    for email in set(allEmails):  #set() to remove duplicates from the final list
-        print("\033[92m" + email + "\033[0m")
+        print(f"{line}\n - All collected emails:\n{line}")
+        for email in set(allEmails):  #set() to remove duplicates from the final list /!\set don't keep original order of list/!\
+            print("\033[92m" + email + "\033[0m")
+    except KeyboardInterrupt:
+        print("\nemailFinder stopped with Ctrl + C, adios!")
+        sys.exit(0)
