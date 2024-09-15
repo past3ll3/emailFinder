@@ -1,11 +1,18 @@
 import requests
 from bs4 import BeautifulSoup
+from bs4 import XMLParsedAsHTMLWarning
+import warnings
 import argparse
 import re
 from urllib.parse import urljoin
 import sys
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+import itertools
+import threading
 
+# Email regex
 emailReg = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
 secondReg = r'^(?!.*\.(png|jpg|jpeg|gif|php|js|css|html|mp4)$)(?=.{2,25}@)(?!.*@.*@)(?!.*\..*\..*\.)(?!.*@.{1,1}\.)(?!.*@.{26,}@).+@[^.]+?\.[^.]+$'
 
@@ -14,108 +21,128 @@ tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'li', 'span'
         'rp', 'blockquote', 'pre', 'address', 'hr', 'form', 'label', 'input', 'textarea', 'button', 'select', 'option', 
         'fieldset', 'legend', 'table', 'caption', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'article', 'section', 'nav', 
         'aside', 'header', 'footer', 'main', 'figure', 'figcaption', 'details', 'summary', 'dialog']
+
 allEmails = []
 line = "=================================================="
-header = """
+
+header = """\033[1;35m
                     _                  
   _  ._ _   _. o | |_ o ._   _|  _  ._ 
  (/_ | | | (_| | | |  | | | (_| (/_ |  
-        """
+                                       \033[0m"""
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
+def loader(stopLoader):
+    spinner = itertools.cycle(['⠋', '⠙', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
+    while not stopLoader.is_set():
+        sys.stdout.write(f'\r - [ \033[92m{next(spinner)}\033[0m Collecting emails, please wait \033[92m{next(spinner)}\033[0m ]')
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write('\r\n - Done !\n')
 
 def getHrefRoutes(url):
     try:
         response = requests.get(url)
-        response.raise_for_status()  #stop if 4xx/5xx errors
+        response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
         routes = []
-        for a_tag in soup.find_all('a', href=True): #get all route from website based on href
+        for a_tag in soup.find_all('a', href=True):
             href = a_tag['href']
             routes.append(href)
 
         return routes
 
     except requests.exceptions.RequestException as e:
-        #print(f"The given URL ({url}) is not reachable, see errors ===> \033[91m{e}\033[0m")
-        return [] #return [] to ensure the function always return a list 
+        return []
 
 def findEmails(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
     except requests.exceptions.RequestException as x:
-        #print(f"URL \033[91m{url}\033[0m is not valid: {x}")
         return
-    
-    soup = BeautifulSoup(response.text, 'html.parser')
 
-    #replace all tags by a space to avoid fusion
+    soup = BeautifulSoup(response.text, 'lxml')
     websiteContent = []
+
     for element in soup.descendants:
-        if isinstance(element, str):  
+        if isinstance(element, str):
             websiteContent.append(element)
-        elif element.name in tags: 
+        elif element.name in tags:
             websiteContent.append(' ')
 
     dataFormated = ''.join(websiteContent)
     emails = re.findall(emailReg, dataFormated)
-    
+
     if emails:
-        for email in set(emails):  
-            #print(f"[\033[92mx\033[0m]" + email)
+        for email in set(emails):
             if re.match(secondReg, email):
                 allEmails.append(email)
-                print(f"Found emails in \033[0;33m{url}\033[0m:")
-                print(f"[\033[92mx\033[0m]" + email)  
-    #else:
-        #print(f"\033[91mNo emails found in {url}.\033[0m")
 
 def process_url(url):
     routes = getHrefRoutes(url)
 
     if routes:
-        print(f"{line}\n - Found {len(routes)} routes.\n - Scanning each for emails on \033[0;33m{url}\033[0m ...\n{line}")
-        for route in routes:
-            full_url = urljoin(url, route)
-            findEmails(full_url)
+        urls_to_scan = [urljoin(url, route) for route in routes]
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(findEmails, full_url) for full_url in urls_to_scan]
+            for future in as_completed(futures):
+                future.result()
     else:
-        print(f"No routes found on the provided URL: {url}.")
+        print(f"\n - [\033[91merror\033[0m] Can't find urls/routes from : {url}")
 
 def process_urls_from_file(file_path):
     if not os.path.isfile(file_path):
         print(f"\033[91mThe file '\033[0;33m{file_path}\033[0m' does not exist.\033[0m")
         sys.exit(1)
-
     with open(file_path, 'r') as f:
         urls = f.read().splitlines()
 
-    for url in urls:
-        if url.strip():
-            print(f"{line}\n - Scanning \033[0;33m{url}\033[0m ...")
-            process_url(url)
+    with ThreadPoolExecutor(max_workers=30) as executor:
+        futures = [executor.submit(process_url, url) for url in urls if url.strip()]
+        for future in as_completed(futures):
+            future.result()
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description="Find email addresses from a given website or a file with multiple URLs.")
     parser.add_argument('input', help="The website URL or the file path containing a list of URLs.")
     args = parser.parse_args()
-
     input_value = args.input
-    try : #wrapping mainlogic to catch keyboardinterrupt
-        #check if input is a file or a URL
+
+    try:
+        startTimer = time.time()  # Start the timer
+        stopLoader = threading.Event()
+        startLoader = threading.Thread(target=loader, args=(stopLoader,))
+
+        # Display the header
         if os.path.isfile(input_value):
             print(f"{header}")
-            print(f"{line}\n - Provided target file with URLs ==> \033[0;33m{input_value}\033[0m")
+            print(f"{line}\n - Provided target file with URLs ==> \033[1;35m{input_value}\033[0m\n{line}")
+            startLoader.start()
             process_urls_from_file(input_value)
         else:
             print(f"{header}")
             print(f"{line}\n - Provided URL ==> \033[0;33m{input_value}\033[0m")
+            startLoader.start()
             process_url(input_value)
 
-        print(f"{line}\n - All collected emails:\n{line}")
-        for email in set(allEmails):  #set() to remove duplicates from the final list /!\set don't keep original order of list/!\
+        stopLoader.set()  
+        startLoader.join()
+
+        lastTime = time.time()
+        timerResult = lastTime - startTimer
+        convMin = int(timerResult // 60)
+        convSec = int(timerResult % 60)
+
+        allEmailsLength = len(set(allEmails))
+        print(f"{line}\n - Took \033[92m{convMin}m{convSec}s\033[0m to find \033[92m{allEmailsLength}\033[0m emails from \033[0;33m{input_value}\033[0m")
+        print(f" - All collected emails :\n{line}")
+        for email in set(allEmails):
             print("\033[92m" + email + "\033[0m")
+
     except KeyboardInterrupt:
         print("\nemailFinder stopped with Ctrl + C, adios!")
         sys.exit(0)
