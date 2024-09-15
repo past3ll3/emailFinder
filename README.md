@@ -24,7 +24,8 @@ python3 emailFinder.py urls.txt
 ## Improvement
 
 - [ ] Filter final list to remove wrong input
-- [ ] Speed, add multithreading when a file as an input 
+- [ ] Speed, add multithreading when a file as an input
+- [ ] Avoid bot detection
 
 ## Demo
 
