@@ -12,10 +12,8 @@ import time
 import itertools
 import threading
 
-# Email regex
 emailReg = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
 secondReg = r'^(?!.*\.(png|jpg|jpeg|gif|php|js|css|html|mp4)$)(?=.{2,25}@)(?!.*@.*@)(?!.*\..*\..*\.)(?!.*@.{1,1}\.)(?!.*@.{26,}@).+@[^.]+?\.[^.]+$'
-
 tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'li', 'span', 'a', 'strong', 'em', 'b', 'i', 'mark', 
         'small', 'sub', 'sup', 'code', 'samp', 'kbd', 'var', 'cite', 'del', 'ins', 'q', 'abbr', 'bdi', 'bdo', 'ruby', 'rt', 
         'rp', 'blockquote', 'pre', 'address', 'hr', 'form', 'label', 'input', 'textarea', 'button', 'select', 'option', 
@@ -23,38 +21,33 @@ tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'li', 'span'
         'aside', 'header', 'footer', 'main', 'figure', 'figcaption', 'details', 'summary', 'dialog']
 
 allEmails = []
-line = "==========================================================="
+color = ["\033[1;35m", "\033[92m", "\033[33m", "\033[0m"]
+line = "=============================================================="
 
-header = """\033[1;35m
-                         _   ___               _            
-                       _(_ )(  _`\\ _          ( )           
-   __   ___ ___    _ _(_)| || (_(_(_) ___    _| |  __  _ __ 
- /'__`/' _ ` _ `\/'_` | || ||  _) | /' _ `\/'_` |/'__`( '__)
-(  ___| ( ) ( ) ( (_| | || || |   | | ( ) ( (_| (  ___| |   
-`\____(_) (_) (_`\__,_(_(___(_)   (_(_) (_`\__,_`\____(_)   
-                                                            
-\033[0m"""
+header = f"""{color[0]}
+╔══════════════════════════════════════════════════════════╗
+║                                                          ║
+║                         •┓┏┓•   ┓                        ║
+║                  ┏┓┏┳┓┏┓┓┃┣ ┓┏┓┏┫┏┓┏┓                    ║
+║                  ┗ ┛┗┗┗┻┗┗┻ ┗┛┗┗┻┗ ┛                     ║
+║                                                          ║
+║        {color[3]}Automate your email discovery effortlessly{color[0]}        ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝                                                          
+{color[3]}"""
 
-# footer = """
-#           __..--''/\\
-#     _..-''_.\\`|  /  \\
-#    \\`-._  `.-'_ /    \\    Done !
-#     \\   ``-.(|)` ._   \\
-#      \\    ,'       `-._\\
-#       \\  /     _..--''
-#        \\/_..-''        
-# \033[0m"""
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)#(ugly?)way to avoid xml/html error during parsing
 
-warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
-
+#loader for fun
 def loader(stopLoader):
     spinner = itertools.cycle(['⠋', '⠙', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
     while not stopLoader.is_set():
-        sys.stdout.write(f'\r - [ \033[92m{next(spinner)}\033[0m Collecting emails, please wait \033[92m{next(spinner)}\033[0m ]')
+        sys.stdout.write(f'\r - [ {color[1]}{next(spinner)}{color[3]} Collecting emails, please wait {color[1]}{next(spinner)}{color[3]} ]')
         sys.stdout.flush()
         time.sleep(0.1)
-    sys.stdout.write(f'\r\n - \033[1;35mDone !\033[0m\n')
+    sys.stdout.write(f'\r\n - {color[0]}Done !{color[3]}\n')
 
+#search routes in url based on href(could be better?)
 def getHrefRoutes(url):
     try:
         response = requests.get(url)
@@ -72,6 +65,7 @@ def getHrefRoutes(url):
     except requests.exceptions.RequestException as e:
         return []
 
+#scrap emails with regex 
 def findEmails(url):
     try:
         response = requests.get(url)
@@ -82,6 +76,7 @@ def findEmails(url):
     soup = BeautifulSoup(response.text, 'lxml')
     websiteContent = []
 
+    #weird tricks to avoid unwanted concatenation 
     for element in soup.descendants:
         if isinstance(element, str):
             websiteContent.append(element)
@@ -91,32 +86,35 @@ def findEmails(url):
     dataFormated = ''.join(websiteContent)
     emails = re.findall(emailReg, dataFormated)
 
+    #second regex filter to avoid wrong email
     if emails:
         for email in set(emails):
             if re.match(secondReg, email):
                 allEmails.append(email)
 
-def process_url(url):
+#url process
+def processUrl(url):
     routes = getHrefRoutes(url)
 
     if routes:
         urls_to_scan = [urljoin(url, route) for route in routes]
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=500) as executor:
             futures = [executor.submit(findEmails, full_url) for full_url in urls_to_scan]
             for future in as_completed(futures):
                 future.result()
     else:
-        print(f"\n - [\033[33mwarning\033[0m] Can't find urls/routes from : {url}")
+        print(f"\n - [{color[2]}warning{color[3]}] Can't find urls/routes from : {url}")
 
-def process_urls_from_file(file_path):
+#urls process
+def processUrlsFromFile(file_path):
     if not os.path.isfile(file_path):
-        print(f"\033[91mThe file '\033[0;33m{file_path}\033[0m' does not exist.\033[0m")
+        print(f"\033[91mThe file '\033[0;33m{file_path}{color[3]}' does not exist.{color[3]}")
         sys.exit(1)
     with open(file_path, 'r') as f:
         urls = f.read().splitlines()
 
     with ThreadPoolExecutor(max_workers=500) as executor:
-        futures = [executor.submit(process_url, url) for url in urls if url.strip()]
+        futures = [executor.submit(processUrl, url) for url in urls if url.strip()]
         for future in as_completed(futures):
             future.result()
 
@@ -126,22 +124,22 @@ if __name__ == '__main__':
     args = parser.parse_args()
     input_value = args.input
 
+
     try:
-        startTimer = time.time()  # Start the timer
+        startTimer = time.time()  
         stopLoader = threading.Event()
         startLoader = threading.Thread(target=loader, args=(stopLoader,))
 
-        # Display the header
         if os.path.isfile(input_value):
             print(f"{header}")
-            print(f"{line}\n - Provided target file with URLs ==> \033[1;35m{input_value}\033[0m\n{line}")
+            print(f"{line}\n - Provided target file with URLs ==> {color[0]}{input_value}{color[3]}\n{line}")
             startLoader.start()
-            process_urls_from_file(input_value)
+            processUrlsFromFile(input_value)
         else:
             print(f"{header}")
-            print(f"{line}\n - Provided URL ==> \033[1;35m{input_value}\033[0m")
+            print(f"{line}\n - Provided URL ==> {color[0]}{input_value}{color[3]}")
             startLoader.start()
-            process_url(input_value)
+            processUrl(input_value)
 
         stopLoader.set()  
         startLoader.join()
@@ -152,11 +150,12 @@ if __name__ == '__main__':
         convSec = int(timerResult % 60)
 
         allEmailsLength = len(set(allEmails))
-        print(f"{line}\n - Took \033[92m{convMin}m{convSec}s\033[0m to find \033[92m{allEmailsLength}\033[0m emails from \033[1;35m{input_value}\033[0m")
+        print(f"{line}\n - Took {color[1]}{convMin}m{convSec}s{color[3]} to find {color[1]}{allEmailsLength}{color[3]} emails from {color[0]}{input_value}{color[3]}")
         print(f" - All collected emails :\n{line}")
         for email in set(allEmails):
-            print("\033[92m" + email + "\033[0m")
+            print(f"{color[1]}" + email + f"{color[3]}")
 
+    #not working very well with multithreading
     except KeyboardInterrupt:
         print("\nemailFinder stopped with Ctrl + C, adios!")
         sys.exit(0)
