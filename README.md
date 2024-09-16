@@ -22,6 +22,7 @@ pip install -r requirements
 python3 emailFinder.py urls.txt 
 ```
 ## Demo 
+![alt text](https://github.com/past3ll3/emailFinder/blob/main/demo.gif)
 ![image](https://github.com/user-attachments/assets/73892d0c-7f4b-4d2f-8454-1f96151215a9)
 ![image](https://github.com/user-attachments/assets/6db660e4-8930-44a4-a1ee-42a37d8da15e)
 ![image](https://github.com/user-attachments/assets/cc790f66-12e9-4459-84e7-68530da62553)
