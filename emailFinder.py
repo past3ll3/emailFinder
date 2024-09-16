@@ -23,13 +23,27 @@ tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'li', 'span'
         'aside', 'header', 'footer', 'main', 'figure', 'figcaption', 'details', 'summary', 'dialog']
 
 allEmails = []
-line = "=================================================="
+line = "==========================================================="
 
 header = """\033[1;35m
-                    _                  
-  _  ._ _   _. o | |_ o ._   _|  _  ._ 
- (/_ | | | (_| | | |  | | | (_| (/_ |  
-                                       \033[0m"""
+                         _   ___               _            
+                       _(_ )(  _`\\ _          ( )           
+   __   ___ ___    _ _(_)| || (_(_(_) ___    _| |  __  _ __ 
+ /'__`/' _ ` _ `\/'_` | || ||  _) | /' _ `\/'_` |/'__`( '__)
+(  ___| ( ) ( ) ( (_| | || || |   | | ( ) ( (_| (  ___| |   
+`\____(_) (_) (_`\__,_(_(___(_)   (_(_) (_`\__,_`\____(_)   
+                                                            
+\033[0m"""
+
+# footer = """
+#           __..--''/\\
+#     _..-''_.\\`|  /  \\
+#    \\`-._  `.-'_ /    \\    Done !
+#     \\   ``-.(|)` ._   \\
+#      \\    ,'       `-._\\
+#       \\  /     _..--''
+#        \\/_..-''        
+# \033[0m"""
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
@@ -39,7 +53,7 @@ def loader(stopLoader):
         sys.stdout.write(f'\r - [ \033[92m{next(spinner)}\033[0m Collecting emails, please wait \033[92m{next(spinner)}\033[0m ]')
         sys.stdout.flush()
         time.sleep(0.1)
-    sys.stdout.write('\r\n - Done !\n')
+    sys.stdout.write(f'\r\n - \033[1;35mDone !\033[0m\n')
 
 def getHrefRoutes(url):
     try:
@@ -92,7 +106,7 @@ def process_url(url):
             for future in as_completed(futures):
                 future.result()
     else:
-        print(f"\n - [\033[91merror\033[0m] Can't find urls/routes from : {url}")
+        print(f"\n - [\033[33mwarning\033[0m] Can't find urls/routes from : {url}")
 
 def process_urls_from_file(file_path):
     if not os.path.isfile(file_path):
@@ -101,7 +115,7 @@ def process_urls_from_file(file_path):
     with open(file_path, 'r') as f:
         urls = f.read().splitlines()
 
-    with ThreadPoolExecutor(max_workers=30) as executor:
+    with ThreadPoolExecutor(max_workers=500) as executor:
         futures = [executor.submit(process_url, url) for url in urls if url.strip()]
         for future in as_completed(futures):
             future.result()
@@ -125,7 +139,7 @@ if __name__ == '__main__':
             process_urls_from_file(input_value)
         else:
             print(f"{header}")
-            print(f"{line}\n - Provided URL ==> \033[0;33m{input_value}\033[0m")
+            print(f"{line}\n - Provided URL ==> \033[1;35m{input_value}\033[0m")
             startLoader.start()
             process_url(input_value)
 
@@ -138,7 +152,7 @@ if __name__ == '__main__':
         convSec = int(timerResult % 60)
 
         allEmailsLength = len(set(allEmails))
-        print(f"{line}\n - Took \033[92m{convMin}m{convSec}s\033[0m to find \033[92m{allEmailsLength}\033[0m emails from \033[0;33m{input_value}\033[0m")
+        print(f"{line}\n - Took \033[92m{convMin}m{convSec}s\033[0m to find \033[92m{allEmailsLength}\033[0m emails from \033[1;35m{input_value}\033[0m")
         print(f" - All collected emails :\n{line}")
         for email in set(allEmails):
             print("\033[92m" + email + "\033[0m")
