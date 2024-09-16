@@ -1,8 +1,8 @@
 # emailFinder  
 
-Python script to find emails from a list of URLs
-
-It can be useful in various ways and for multiple purposes
+ A web scraping tool that extracts email addresses from websites or multiple URLs listed in a file. 
+ 
+ It crawls through all page routes and parses content to find and display email addresses. 
 
 ## How to run it
 
@@ -21,16 +21,9 @@ pip install -r requirements
 ```
 python3 emailFinder.py urls.txt 
 ```
-## Improvement
 
-- [x] Filter final list to remove wrong input
-- [x] Speed, add multithreading
-- [ ] ?
-
-## Demo
-
-![image](https://github.com/user-attachments/assets/5a5e610e-2187-4bdd-87d2-49bc2ed26b29)
-![image](https://github.com/user-attachments/assets/59051610-5b8b-4e8a-96d1-700fd6f5c305)
-![image](https://github.com/user-attachments/assets/af018100-4566-42a6-a0fe-165c4ad15e39)
-![image](https://github.com/user-attachments/assets/4c56f29d-72d5-450a-8c98-8c3cebb03a8e)
+![image](https://github.com/user-attachments/assets/73892d0c-7f4b-4d2f-8454-1f96151215a9)
+![image](https://github.com/user-attachments/assets/6db660e4-8930-44a4-a1ee-42a37d8da15e)
+![image](https://github.com/user-attachments/assets/cc790f66-12e9-4459-84e7-68530da62553)
+![image](https://github.com/user-attachments/assets/fd9b3c3f-17fa-436d-8843-0a4099d0f81f)
 
