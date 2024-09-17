@@ -1,26 +1,69 @@
-# emailFinder  
+# emailFinder - Email Extraction Tool
+emailFinder is a Python-based web scraping tool designed to extract email addresses from websites or multiple URLs listed in a file. 
 
- A web scraping tool that extracts email addresses from websites or multiple URLs listed in a file. 
- 
- It crawls through all page routes and parses content to find and display email addresses. 
+This email scraper crawls through website pages, parses content, and efficiently extracts email addresses.
 
-## How to run it
+## Features
+- Automatically crawls through all page routes.
+- Finds and displays email addresses.
+- Input URLs directly or through a text file.
 
+## Prerequisites
+- Python 3.x installed on your machine.
+- Virtual environment support.
+
+  
+## How to Install and Run
+
+Follow these simple steps to clone the repository, install dependencies, and run the tool:
+
+### Clone the repository
 ```
 git clone git@github.com:AyraStelmaszewski/emailFinder.git
+
 ```
+
+### Navigate to the project directory
+```
+cd emailFinder
+```
+
+### Set up a virtual environment
+
 ```
 python3 -m venv venv
 ```
+
+### Activate the virtual environment
 ```
 source venv/bin/activate
 ```
+
+### Install dependencies
 ```
 pip install -r requirements
 ```
+### Run the email extraction tool
 ```
 python3 emailFinder.py urls.txt 
 ```
+
+
+## Usage Example
+To extract emails from a website or multiple URLs:
+
+- Add URLs to a file.
+- Run the tool as shown in the above command.
+
+
+This tool will scan all routes of the URLs provided and extract all email addresses found.
+
+## Contribution
+Contributions, issues, and feature requests are welcome! Feel free to check out the issues page.
+
+## License
+This project is licensed under the GLPv3 License.
+
 ## Demo 
 ![alt text](https://github.com/past3ll3/emailFinder/blob/main/demo.gif)
 ![image](https://github.com/user-attachments/assets/73892d0c-7f4b-4d2f-8454-1f96151215a9)
