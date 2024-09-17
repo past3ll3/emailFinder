@@ -10,7 +10,7 @@ This email scraper crawls through website pages, parses content, and efficiently
 
 ## Prerequisites
 - Python 3.x installed on your machine.
-- Virtual environment support.
+- Venv (Virtual environment support).
 
   
 ## How to Install and Run
