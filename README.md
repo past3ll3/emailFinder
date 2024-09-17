@@ -20,7 +20,6 @@ Follow these simple steps to clone the repository, install dependencies, and run
 ### Clone the repository
 ```
 git clone git@github.com:AyraStelmaszewski/emailFinder.git
-
 ```
 
 ### Navigate to the project directory
