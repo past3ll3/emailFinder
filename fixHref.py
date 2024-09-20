@@ -22,8 +22,6 @@ tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'li', 'span'
 
 allEmails = []
 color = ["\033[1;35m", "\033[92m", "\033[33m", "\033[0m"]
-line = "=============================================================="
-
 header = f"""{color[0]}
 ╔══════════════════════════════════════════════════════════╗
 ║                                                          ║
@@ -36,9 +34,11 @@ header = f"""{color[0]}
 ╚══════════════════════════════════════════════════════════╝                                                          
 {color[3]}"""
 
-warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)#(ugly?)way to avoid xml/html error during parsing
+line = "=============================================================="
 
-#loader for fun
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
+# Loader for fun
 def loader(stopLoader):
     spinner = itertools.cycle(['⠋', '⠙', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
     while not stopLoader.is_set():
@@ -47,28 +47,29 @@ def loader(stopLoader):
         time.sleep(0.1)
     sys.stdout.write(f'\r\n - {color[0]}Done !{color[3]}\n')
 
-#get domain from url
+# Get domain from URL
 def getDomain(url):
     parsed_url = urlparse(url)
     return parsed_url.netloc
 
-#check if a URL belongs to the same domain
-def checkIfSameDomain(base_url, target_url):
+# Check if a URL belongs to the same domain
+def is_same_domain(base_url, target_url):
     return getDomain(base_url) == getDomain(target_url)
 
-#search routes in url based on href(could be better?)
+# Search routes in URL based on href
 def getHrefRoutes(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
+
         routes = []
         for a_tag in soup.find_all('a', href=True):
             href = a_tag['href']
             full_url = urljoin(url, href)
             # Filter URLs that belong to the same domain
-            if checkIfSameDomain(url, full_url):
+            if is_same_domain(url, full_url):
                 routes.append(full_url)
 
         return routes
@@ -76,7 +77,7 @@ def getHrefRoutes(url):
     except requests.exceptions.RequestException as e:
         return []
 
-#scrap emails with regex 
+# Scrap emails with regex
 def findEmails(url):
     try:
         response = requests.get(url)
@@ -87,7 +88,6 @@ def findEmails(url):
     soup = BeautifulSoup(response.text, 'lxml')
     websiteContent = []
 
-    #weird tricks to avoid unwanted concatenation 
     for element in soup.descendants:
         if isinstance(element, str):
             websiteContent.append(element)
@@ -97,13 +97,13 @@ def findEmails(url):
     dataFormated = ''.join(websiteContent)
     emails = re.findall(emailReg, dataFormated)
 
-    #second regex filter to avoid wrong email
+    # Second regex filter to avoid wrong email
     if emails:
         for email in set(emails):
             if re.match(secondReg, email):
                 allEmails.append(email)
 
-#url process
+# URL process
 def processUrl(url):
     routes = getHrefRoutes(url)
 
@@ -114,9 +114,9 @@ def processUrl(url):
             for future in as_completed(futures):
                 future.result()
     else:
-        print(f"\n - [{color[2]}warning{color[3]}] Can't find urls/routes from : {url}")
+        print(f"\n - [{color[2]}warning{color[3]}] Can't find URLs/routes from : {url}")
 
-#urls process
+# URLs process
 def processUrlsFromFile(file_path):
     if not os.path.isfile(file_path):
         print(f"\033[91mThe file '\033[0;33m{file_path}{color[3]}' does not exist.{color[3]}")
@@ -134,7 +134,6 @@ if __name__ == '__main__':
     parser.add_argument('input', help="The website URL or the file path containing a list of URLs.")
     args = parser.parse_args()
     input_value = args.input
-
 
     try:
         startTimer = time.time()  
@@ -166,7 +165,7 @@ if __name__ == '__main__':
         for email in set(allEmails):
             print(f"{color[1]}" + email + f"{color[3]}")
 
-    #not working very well with multithreading
     except KeyboardInterrupt:
         print("\nemailFinder stopped with Ctrl + C, adios!")
         sys.exit(0)
+
