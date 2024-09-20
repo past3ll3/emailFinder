@@ -65,7 +65,7 @@ This project is licensed under the GLPv3 License.
 
 ## Disclaimer
 There is no filter on type of emails collected. 
-Business email addresses is considered personal data if they are associated with an individual (e.g. alice.doe@example.com), but generic email addresses are fine (e.g. sales@example.com).
+Business email addresses is considered personal data if they are associated with an individual (e.g. alice.doe@example), but generic email addresses are fine (e.g. sales@example).
 
 ## Demo 
 ![alt text](https://github.com/past3ll3/emailFinder/blob/main/demo.gif)
