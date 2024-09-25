@@ -1,8 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-from bs4 import XMLParsedAsHTMLWarning
-import warnings
-import argparse
 import re
 from urllib.parse import urljoin, urlparse
 import sys
@@ -11,17 +8,18 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import itertools
 import threading
+import argparse  # Add this import
 
 # Email regular expressions
 email_reg = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
 second_reg = r'^(?!.*\.(png|jpg|jpeg|gif|php|js|css|html|mp4)$)(?=.{2,25}@)(?!.*@.*@)(?!.*\..*\..*\.)(?!.*@.{1,1}\.)(?!.*@.{26,}@).+@[^.]+?\.[^.]+$'
 
 # HTML tags to extract text from
-tags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'li', 'span', 'a', 'strong', 'em', 'b', 'i', 'mark', 
-        'small', 'sub', 'sup', 'code', 'samp', 'kbd', 'var', 'cite', 'del', 'ins', 'q', 'abbr', 'bdi', 'bdo', 'ruby', 'rt', 
-        'rp', 'blockquote', 'pre', 'address', 'hr', 'form', 'label', 'input', 'textarea', 'button', 'select', 'option', 
-        'fieldset', 'legend', 'table', 'caption', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'article', 'section', 'nav', 
-        'aside', 'header', 'footer', 'main', 'figure', 'figcaption', 'details', 'summary', 'dialog']
+tags = set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'ul', 'ol', 'li', 'span', 'a', 'strong', 'em', 'b', 'i', 'mark', 
+            'small', 'sub', 'sup', 'code', 'samp', 'kbd', 'var', 'cite', 'del', 'ins', 'q', 'abbr', 'bdi', 'bdo', 'ruby', 'rt', 
+            'rp', 'blockquote', 'pre', 'address', 'hr', 'form', 'label', 'input', 'textarea', 'button', 'select', 'option', 
+            'fieldset', 'legend', 'table', 'caption', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'article', 'section', 'nav', 
+            'aside', 'header', 'footer', 'main', 'figure', 'figcaption', 'details', 'summary', 'dialog'])
 
 all_emails = []
 color = ["\033[1;35m", "\033[92m", "\033[33m", "\033[0m"]
@@ -38,8 +36,6 @@ header = f"""{color[0]}
 ║                                                          ║
 ╚══════════════════════════════════════════════════════════╝                                                          
 {color[3]}"""
-
-warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)  # Avoid XML/HTML parsing warnings
 
 # Loader spinner
 def loader(stop_loader):
@@ -62,57 +58,43 @@ def check_if_same_domain(base_url, target_url):
 # Get href routes from URL
 def get_href_routes(url):
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=5)  # Reduced timeout for faster response
         response.raise_for_status()
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        routes = []
-        for a_tag in soup.find_all('a', href=True):
-            href = a_tag['href']
-            full_url = urljoin(url, href)
-            if check_if_same_domain(url, full_url):
-                routes.append(full_url)
-
+        soup = BeautifulSoup(response.text, 'lxml')  # Ensure lxml is used for faster parsing
+        routes = {urljoin(url, a_tag['href']) for a_tag in soup.find_all('a', href=True) if check_if_same_domain(url, urljoin(url, a_tag['href']))}
         return routes
-
     except requests.exceptions.RequestException as e:
-        return []
+        print(f"Error fetching routes from {url}: {e}")
+        return set()
 
 # Find emails using regex
 def find_emails(url):
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=5)  # Reduced timeout for faster response
         response.raise_for_status()
-    except requests.exceptions.RequestException as x:
-        return
+        soup = BeautifulSoup(response.text, 'lxml')  # Ensure lxml is used for faster parsing
+        website_content = []
 
-    soup = BeautifulSoup(response.text, 'lxml')
-    website_content = []
+        # Extract text from specified tags
+        for tag in tags:
+            for element in soup.find_all(tag):
+                website_content.append(element.get_text())
 
-    # Extract text from specified tags
-    for element in soup.descendants:
-        if isinstance(element, str):
-            website_content.append(element)
-        elif element.name in tags:
-            website_content.append(' ')
+        data_formatted = ' '.join(website_content)
+        emails = set(re.findall(email_reg, data_formatted))
 
-    data_formatted = ''.join(website_content)
-    emails = re.findall(email_reg, data_formatted)
-
-    # Filter out invalid emails
-    if emails:
-        for email in set(emails):
-            if re.match(second_reg, email):
-                all_emails.append(email)
+        # Filter out invalid emails
+        valid_emails = {email for email in emails if re.match(second_reg, email)}
+        all_emails.extend(valid_emails)
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching emails from {url}: {e}")
 
 # Process URL to extract email addresses
 def process_url(url):
     routes = get_href_routes(url)
-
     if routes:
-        urls_to_scan = [urljoin(url, route) for route in routes]
-        with ThreadPoolExecutor(max_workers=50) as executor:  # Reduced number of workers to avoid overload
-            futures = [executor.submit(find_emails, full_url) for full_url in urls_to_scan]
+        with ThreadPoolExecutor(max_workers=50) as executor:  # Increased number of workers
+            futures = [executor.submit(find_emails, full_url) for full_url in routes]
             for future in as_completed(futures):
                 future.result()
     else:
@@ -124,10 +106,10 @@ def process_urls_from_file(file_path):
         print(f"\033[91mThe file '\033[0;33m{file_path}{color[3]}' does not exist.{color[3]}")
         sys.exit(1)
     with open(file_path, 'r') as f:
-        urls = f.read().splitlines()
+        urls = [url.strip() for url in f if url.strip()]
 
-    with ThreadPoolExecutor(max_workers=50) as executor:  # Reduced number of workers to avoid overload
-        futures = [executor.submit(process_url, url) for url in urls if url.strip()]
+    with ThreadPoolExecutor(max_workers=50) as executor:  # Increased number of workers
+        futures = [executor.submit(process_url, url) for url in urls]
         for future in as_completed(futures):
             future.result()
 
@@ -163,6 +145,8 @@ if __name__ == '__main__':
 
         all_emails_length = len(set(all_emails))
         print(f"{line}\n - Took {color[1]}{conv_min}m{conv_sec}s{color[3]} to find {color[1]}{all_emails_length}{color[3]} emails from {color[0]}{input_value}{color[3]}")
+
+        # Print all collected emails
         print(f" - All collected emails:\n{line}")
         for email in set(all_emails):
             print(f"{color[1]}" + email + f"{color[3]}")
