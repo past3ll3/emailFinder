@@ -8,7 +8,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import itertools
 import threading
-import argparse  # Add this import
+import argparse
+import aiohttp
+import asyncio
 
 # Email regular expressions
 email_reg = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
@@ -46,61 +48,58 @@ def loader(stop_loader):
         time.sleep(0.1)
     sys.stdout.write(f'\r\n - {color[0]}Done !{color[3]}\n')
 
-# Get domain from URL
+async def fetch_url(session, url):
+    try:
+        async with session.get(url, timeout=5) as response:
+            response.raise_for_status()
+            return await response.text()
+    except Exception as e:
+        return ""
+
+async def find_emails_async(session, url):
+    html = await fetch_url(session, url)
+    soup = BeautifulSoup(html, 'lxml')
+    website_content = []
+
+    for tag in tags:
+        for element in soup.find_all(tag):
+            website_content.append(element.get_text())
+
+    data_formatted = ' '.join(website_content)
+    emails = set(re.findall(email_reg, data_formatted))
+    valid_emails = {email for email in emails if re.match(second_reg, email)}
+    all_emails.extend(valid_emails)
+
+async def process_urls(urls):
+    async with aiohttp.ClientSession() as session:
+        tasks = [find_emails_async(session, url) for url in urls]
+        await asyncio.gather(*tasks)
+
 def get_domain(url):
     parsed_url = urlparse(url)
     return parsed_url.netloc
 
-# Check if a URL belongs to the same domain
 def check_if_same_domain(base_url, target_url):
     return get_domain(base_url) == get_domain(target_url)
 
-# Get href routes from URL
 def get_href_routes(url):
     try:
-        response = requests.get(url, timeout=5)  # Reduced timeout for faster response
+        response = requests.get(url, timeout=5)
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'lxml')  # Ensure lxml is used for faster parsing
+        soup = BeautifulSoup(response.text, 'lxml')
         routes = {urljoin(url, a_tag['href']) for a_tag in soup.find_all('a', href=True) if check_if_same_domain(url, urljoin(url, a_tag['href']))}
         return routes
     except requests.exceptions.RequestException as e:
         print(f"Error fetching routes from {url}: {e}")
         return set()
 
-# Find emails using regex
-def find_emails(url):
-    try:
-        response = requests.get(url, timeout=5)  # Reduced timeout for faster response
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'lxml')  # Ensure lxml is used for faster parsing
-        website_content = []
-
-        # Extract text from specified tags
-        for tag in tags:
-            for element in soup.find_all(tag):
-                website_content.append(element.get_text())
-
-        data_formatted = ' '.join(website_content)
-        emails = set(re.findall(email_reg, data_formatted))
-
-        # Filter out invalid emails
-        valid_emails = {email for email in emails if re.match(second_reg, email)}
-        all_emails.extend(valid_emails)
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching emails from {url}: {e}")
-
-# Process URL to extract email addresses
 def process_url(url):
     routes = get_href_routes(url)
     if routes:
-        with ThreadPoolExecutor(max_workers=50) as executor:  # Increased number of workers
-            futures = [executor.submit(find_emails, full_url) for full_url in routes]
-            for future in as_completed(futures):
-                future.result()
+        asyncio.run(process_urls(routes))
     else:
         print(f"\n - [{color[2]}warning{color[3]}] Can't find URLs/routes from: {url}")
 
-# Process URLs from a file
 def process_urls_from_file(file_path):
     if not os.path.isfile(file_path):
         print(f"\033[91mThe file '\033[0;33m{file_path}{color[3]}' does not exist.{color[3]}")
@@ -108,10 +107,7 @@ def process_urls_from_file(file_path):
     with open(file_path, 'r') as f:
         urls = [url.strip() for url in f if url.strip()]
 
-    with ThreadPoolExecutor(max_workers=50) as executor:  # Increased number of workers
-        futures = [executor.submit(process_url, url) for url in urls]
-        for future in as_completed(futures):
-            future.result()
+    process_url(urls)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Find email addresses from a given website or a file with multiple URLs.")
