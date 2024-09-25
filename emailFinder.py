@@ -39,8 +39,14 @@ header = f"""{color[0]}
 ╚══════════════════════════════════════════════════════════╝                                                          
 {color[3]}"""
 
-# Loader spinner
+# Loader spinner function
 def loader(stop_loader):
+    """
+    Displays a loading spinner while email discovery is in progress.
+    
+    Parameters:
+    stop_loader (threading.Event): Event to signal when to stop the spinner.
+    """
     spinner = itertools.cycle(['⠋', '⠙', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
     while not stop_loader.is_set():
         sys.stdout.write(f'\r - [ {color[1]}{next(spinner)}{color[3]} Collecting emails, please wait {color[1]}{next(spinner)}{color[3]} ]')
@@ -49,6 +55,16 @@ def loader(stop_loader):
     sys.stdout.write(f'\r\n - {color[0]}Done !{color[3]}\n')
 
 async def fetch_url(session, url):
+    """
+    Asynchronously fetches the content of a URL.
+    
+    Parameters:
+    session (aiohttp.ClientSession): Asynchronous HTTP session.
+    url (str): URL to fetch.
+    
+    Returns:
+    str: The HTML content of the URL.
+    """
     try:
         async with session.get(url, timeout=5) as response:
             response.raise_for_status()
@@ -57,6 +73,13 @@ async def fetch_url(session, url):
         return ""
 
 async def find_emails_async(session, url):
+    """
+    Asynchronously finds and extracts email addresses from a URL.
+    
+    Parameters:
+    session (aiohttp.ClientSession): Asynchronous HTTP session.
+    url (str): URL to process.
+    """
     html = await fetch_url(session, url)
     soup = BeautifulSoup(html, 'lxml')
     website_content = []
@@ -71,18 +94,52 @@ async def find_emails_async(session, url):
     all_emails.extend(valid_emails)
 
 async def process_urls(urls):
+    """
+    Processes a list of URLs asynchronously to find emails.
+    
+    Parameters:
+    urls (list): List of URLs to process.
+    """
     async with aiohttp.ClientSession() as session:
         tasks = [find_emails_async(session, url) for url in urls]
         await asyncio.gather(*tasks)
 
 def get_domain(url):
+    """
+    Extracts the domain from a URL.
+    
+    Parameters:
+    url (str): URL to parse.
+    
+    Returns:
+    str: The domain part of the URL.
+    """
     parsed_url = urlparse(url)
     return parsed_url.netloc
 
 def check_if_same_domain(base_url, target_url):
+    """
+    Checks if two URLs belong to the same domain.
+    
+    Parameters:
+    base_url (str): Base URL.
+    target_url (str): Target URL.
+    
+    Returns:
+    bool: True if both URLs are from the same domain, False otherwise.
+    """
     return get_domain(base_url) == get_domain(target_url)
 
 def get_href_routes(url):
+    """
+    Fetches and extracts all valid links from a URL.
+    
+    Parameters:
+    url (str): URL to fetch links from.
+    
+    Returns:
+    set: A set of extracted URLs.
+    """
     try:
         response = requests.get(url, timeout=5)
         response.raise_for_status()
@@ -94,6 +151,12 @@ def get_href_routes(url):
         return set()
 
 def process_url(url):
+    """
+    Processes a single URL to find emails by first extracting all links and then fetching emails from those links.
+    
+    Parameters:
+    url (str): The URL to process.
+    """
     routes = get_href_routes(url)
     if routes:
         asyncio.run(process_urls(routes))
@@ -101,6 +164,12 @@ def process_url(url):
         print(f"\n - [{color[2]}warning{color[3]}] Can't find URLs/routes from: {url}")
 
 def process_urls_from_file(file_path):
+    """
+    Processes URLs from a file to find emails.
+    
+    Parameters:
+    file_path (str): Path to the file containing URLs.
+    """
     if not os.path.isfile(file_path):
         print(f"\033[91mThe file '\033[0;33m{file_path}{color[3]}' does not exist.{color[3]}")
         sys.exit(1)
