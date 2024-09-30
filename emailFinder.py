@@ -63,13 +63,24 @@ def getHrefRoutes(url):
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Parse the domain of the main URL
+        base_domain = urlparse(url).netloc
+
         routes = []
         for a_tag in soup.find_all('a', href=True):
             href = a_tag['href']
+            
+            # Join the href with the base URL
             full_url = urljoin(url, href)
-            # Filter URLs that belong to the same domain
-            if checkIfSameDomain(url, full_url):
-                routes.append(full_url)
+            
+            # Parse the domain of the href link
+            link_domain = urlparse(full_url).netloc
+            link_domain = link_domain.replace("www.", "")
+
+            # Only add the route if it is within the same domain
+            if link_domain == base_domain:
+                routes.append(href)
 
         return routes
 
